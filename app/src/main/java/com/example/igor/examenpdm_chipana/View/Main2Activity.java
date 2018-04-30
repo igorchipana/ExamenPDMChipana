@@ -1,11 +1,11 @@
-package com.example.igor.examenpdm_chipana;
+package com.example.igor.examenpdm_chipana.View;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.util.Log;
+import android.support.v4.app.FragmentManager;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -15,26 +15,30 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.example.igor.examenpdm_chipana.MainActivity;
+import com.example.igor.examenpdm_chipana.R;
+import com.example.igor.examenpdm_chipana.View.BlankFragment;
 import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.OptionalPendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class Main2Activity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, GoogleApiClient.OnConnectionFailedListener {
 
     private GoogleApiClient googleApiClient;
+
+    private FirebaseAuth firebaseAuth;
+    private FirebaseAuth.AuthStateListener firebaseAuthListener;
 
     TextView valor1,valor2,valor3,valor4;
     ImageView img;
@@ -62,6 +66,27 @@ public class Main2Activity extends AppCompatActivity
                 .requestEmail()
                 .build();
 
+        firebaseAuth = FirebaseAuth.getInstance();
+        firebaseAuthListener= new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user =firebaseAuth.getCurrentUser();
+                if(user!=null){
+                    //goMainScreen();
+                    FirebaseUser user1 = firebaseAuth.getCurrentUser();
+                    if(user1!=null){
+                        setUserData(user1);
+                    }else{
+                        Errormetodo();
+                    }
+                }
+
+
+            }
+        };
+
+
+
         googleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this,this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API,gso)
@@ -86,6 +111,12 @@ public class Main2Activity extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
 
 
+    }
+
+    private void setUserData(FirebaseUser user1) {
+        valor1.setText(user1.getDisplayName());
+        valor2.setText(user1.getEmail());
+        Glide.with(this).load(user1.getPhotoUrl()).into(img);
     }
 
     @Override
@@ -125,11 +156,14 @@ public class Main2Activity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-
+        FragmentManager fragmentManager = getSupportFragmentManager();
         if (id == R.id.nav_camera) {
-            // Handle the camera action
-        }  else if (id == R.id.nav_share) {
 
+            fragmentManager.beginTransaction().replace(R.id.contenedor,new BlankFragment()).commit();
+
+
+        }  else if (id == R.id.nav_share) {
+            firebaseAuth.signOut();
             Auth.GoogleSignInApi.revokeAccess(googleApiClient).setResultCallback(new ResultCallback<Status>() {
                 @Override
                 public void onResult(@NonNull Status status) {
@@ -143,7 +177,7 @@ public class Main2Activity extends AppCompatActivity
 
 
         } else if (id == R.id.nav_send) {
-
+           firebaseAuth.signOut();
           Auth.GoogleSignInApi.signOut(googleApiClient).setResultCallback(new ResultCallback<Status>() {
               @Override
               public void onResult(@NonNull Status status) {
@@ -165,7 +199,9 @@ public class Main2Activity extends AppCompatActivity
     @Override
     protected void onStart() {
         super.onStart();
-        OptionalPendingResult<GoogleSignInResult> opr = Auth.GoogleSignInApi.silentSignIn(googleApiClient);
+
+        firebaseAuth.addAuthStateListener(firebaseAuthListener);
+      /* OptionalPendingResult<GoogleSignInResult> opr = Auth.GoogleSignInApi.silentSignIn(googleApiClient);
         if(opr.isDone()){
           GoogleSignInResult result=  opr.get();
           metodoResultado(result);
@@ -177,24 +213,7 @@ public class Main2Activity extends AppCompatActivity
                     metodoResultado(googleSignInResult);
                 }
             });
-        }
-    }
-
-    private void metodoResultado(GoogleSignInResult result) {
-        if(result.isSuccess()){
-           GoogleSignInAccount account= result.getSignInAccount();
-           valor1.setText(account.getDisplayName());
-           valor2.setText(account.getEmail());
-
-            Glide.with(this).load(account.getPhotoUrl()).into(img);
-
-            Log.d("Foto",account.getPhotoUrl().toString());
-
-
-
-        }else{
-              Errormetodo();
-        }
+        }*/
     }
 
     private void Errormetodo() {
@@ -207,4 +226,15 @@ public class Main2Activity extends AppCompatActivity
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if(firebaseAuthListener!=null){
+            firebaseAuth.removeAuthStateListener(firebaseAuthListener);
+        }
+    }
 }
+
+
